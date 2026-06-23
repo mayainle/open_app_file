@@ -7,7 +7,6 @@ static NSString *const CHANNEL_NAME = @"open_app_file";
 
 @implementation OpenAppFilePlugin{
     FlutterResult _result;
-    UIViewController *_viewController;
     UIDocumentInteractionController *_documentController;
     UIDocumentInteractionController *_interactionController;
 }
@@ -16,18 +15,40 @@ static NSString *const CHANNEL_NAME = @"open_app_file";
     FlutterMethodChannel* channel = [FlutterMethodChannel
                                      methodChannelWithName:CHANNEL_NAME
                                      binaryMessenger:[registrar messenger]];
-    UIViewController *viewController =
-    [UIApplication sharedApplication].delegate.window.rootViewController;
-    OpenAppFilePlugin* instance = [[OpenAppFilePlugin alloc] initWithViewController:viewController];
+    OpenAppFilePlugin* instance = [[OpenAppFilePlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
 }
 
-- (instancetype)initWithViewController:(UIViewController *)viewController {
-    self = [super init];
-    if (self) {
-        _viewController = viewController;
+- (UIViewController *)presentingViewController {
+    UIWindow *keyWindow = nil;
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) {
+                continue;
+            }
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            for (UIWindow *window in windowScene.windows) {
+                if (window.isKeyWindow) {
+                    keyWindow = window;
+                    break;
+                }
+            }
+            if (keyWindow == nil && scene.activationState == UISceneActivationStateForegroundActive) {
+                keyWindow = windowScene.windows.firstObject;
+            }
+            if (keyWindow != nil) {
+                break;
+            }
+        }
     }
-    return self;
+    if (keyWindow == nil) {
+        keyWindow = [UIApplication sharedApplication].delegate.window;
+    }
+    UIViewController *controller = keyWindow.rootViewController;
+    while (controller.presentedViewController != nil) {
+        controller = controller.presentedViewController;
+    }
+    return controller;
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -45,7 +66,8 @@ static NSString *const CHANNEL_NAME = @"open_app_file";
         @try {
             BOOL previewSucceeded = [_documentController presentPreviewAnimated:YES];
             if(!previewSucceeded){
-                [_documentController presentOpenInMenuFromRect:CGRectMake(500,20,100,100) inView:_viewController.view animated:YES];
+                UIViewController *presenter = [self presentingViewController];
+                [_documentController presentOpenInMenuFromRect:CGRectMake(500,20,100,100) inView:presenter.view animated:YES];
             }
         }@catch (NSException *exception) {
             NSDictionary * dict = @{@"message":@"File opened incorrectly。", @"type":@-4};
@@ -75,7 +97,7 @@ static NSString *const CHANNEL_NAME = @"open_app_file";
 }
 
 - (UIViewController *)documentInteractionControllerViewControllerForPreview:(UIDocumentInteractionController *)controller {
-    return  _viewController;
+    return [self presentingViewController];
 }
 
 - (BOOL) isBlankString:(NSString *)string {

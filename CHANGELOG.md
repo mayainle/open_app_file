@@ -1,3 +1,5 @@
+## 4.0.6
+* Fixed iOS files not opening under the UIScene lifecycle (Flutter 3.44+): the presenting view controller is now resolved at open-time from the active window scene instead of being cached from `delegate.window` at registration, with a fallback to the legacy path for pre-iOS 13 / non-scene apps.
 ## 4.0.5
 * Added Swift Package Manager support for iOS (Package.swift at the package root; sources moved to `ios/open_app_file/Sources`)
 ## 4.0.4
